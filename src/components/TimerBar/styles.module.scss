@@ -1,0 +1,17 @@
+.wrapper {
+    position: absolute;
+    width: 100%;
+    top: 5rem;
+    height: 3px;
+    background: var(--green);
+
+    transition: width 1s;
+    
+    &.alert {
+        background: var(--yellow-500);
+    }
+
+    &.danger {
+        background: var(--red);
+    }
+}

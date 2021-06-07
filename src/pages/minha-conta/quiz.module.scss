@@ -1,0 +1,53 @@
+.container {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 2rem;
+
+    header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        span {
+            background-color: var(--gray-100);
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            border-radius: 3rem;
+
+            svg {
+                margin-left: 0.25rem;
+            }
+        }
+    }
+
+    .submitButton {
+        margin-top: 1rem;
+        display: block;
+    }
+
+    .questionsList {
+        display: flex;
+        flex-direction: column;
+        margin-top: 2rem;
+        
+        .questionItem {
+            display: flex;
+            align-items: center;
+            padding: 1rem 0;
+
+            & + .questionItem {
+                border-top: 1px solid var(--gray-100);
+            }
+
+            svg {
+                margin-right: 0.5rem;
+                cursor: pointer;
+            }
+
+            span {
+                margin-left: 0.5rem;
+            }
+        }
+    }
+}
