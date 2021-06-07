@@ -9,6 +9,7 @@ import { Button } from '../../../../components/Button';
 import { Input } from '../../../../components/Input';
 import { PermissionDenied } from '../../../../components/PermissionDenied';
 import { Checkbox } from '../../../../components/Checkbox';
+import { Loading } from '../../../../components/Loading';
 
 import { Question, Quiz } from '../../../../interfaces/entitiesInterfaces';
 import api from '../../../../services/api';
@@ -27,7 +28,7 @@ export default function EditQuiz({ quiz }: EditQuizProps) {
     const [isPrivate, setIsPrivate] = useState(quiz.private);
     const [questions, setQuestions] = useState(quiz.questions);
 
-    const [session] = useSession();
+    const [session, loading] = useSession();
     const router = useRouter();
 
     const { quizID } = router.query;
@@ -69,6 +70,10 @@ export default function EditQuiz({ quiz }: EditQuizProps) {
             console.error('Erro ao excluir a pergunta', e);
             toast.error('Erro ao excluir a pergunta');
         }
+    }
+
+    if(loading) {
+        return <Loading />
     }
 
     if(!session) {

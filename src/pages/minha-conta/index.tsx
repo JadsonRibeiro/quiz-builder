@@ -102,8 +102,6 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
         { field: 'ownerEmail', operator: '==', value: session.user.email }
     ], true);
 
-    console.log('Quizes', quizes)
-
     const quizList = quizes.map(quiz => ({
         quizID: quiz.quizID,
         name: quiz.name,
