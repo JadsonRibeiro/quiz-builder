@@ -1,11 +1,10 @@
-import { useSession } from 'next-auth/client';
+import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/dist/client/router';
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { FiLink, FiShare2 } from 'react-icons/fi'
 
 import { Question, Room, Team, User } from '../../../interfaces/entitiesInterfaces';
-import { PermissionDenied } from '../../../components/PermissionDenied';
 import { LocalDatabase } from '../../../services/localDatabase';
 
 import getSocket from './../../../services/getSocket'
@@ -18,12 +17,11 @@ import { constants } from '../../../util/contants';
 
 import { TimeBar } from '../../../components/TimerBar';
 import { useInterval } from '../../../hooks/useInterval';
-import { GetServerSideProps } from 'next';
 
 const socket = getSocket('room');
 
 interface TeamOption {
-    [email: string]: {
+    [username: string]: {
         teamID: number;
         user: User
     };
@@ -66,7 +64,6 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
     const [gameFinished, setGameFinished] = useState(false);
     const [winners, setWinners] = useState<Team[]>([]);
 
-    const [session, loading] = useSession();
     const router = useRouter();
 
     useInterval(
@@ -79,41 +76,37 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
     const { roomID, quizID } = router.query;
 
     useEffect(() => {
-        if(session) {
-            setUsername(session.user.name);
-
-            const roomData = LocalDatabase.getRoom(String(roomID));
-            console.log('Storaged Room', roomData);
-            if(roomData) {                
-                setRoom(oldData => ({
-                    ...oldData,
-                    ...roomData
-                }));
-                setIsOwner(roomData.owner.email === session.user.email);
-            }
-
-            const userStoraged = LocalDatabase.getUser();
-            if(userStoraged) {                
-                setUsername(userStoraged.name);
-                setMyUser(userStoraged);
-                setIsMyUserSet(true);
-
-                if(!joinedOnRoom) {
-                    socket.emit(constants.events.JOIN_ROOM, {
-                        user: {
-                            name: userStoraged.name,
-                            email: session.user.email  
-                        },
-                        room: {
-                            roomID,
-                            quizID
-                        }
-                    });
-                    setJoinedOnRoom(true);
-                } 
-            }
+        const storagedRoom = LocalDatabase.getRoom(String(roomID));
+        console.log('Storaged Room', storagedRoom);
+        if(storagedRoom) {
+            setRoom(oldData => ({
+                ...oldData,
+                ...storagedRoom
+            }));
+            setIsOwner(!!storagedRoom);
         }
-    }, [session]);
+
+        const userStoraged = LocalDatabase.getUser();
+        console.log('Storaged user', userStoraged);             
+        if(userStoraged) {
+            setUsername(userStoraged.username);
+            setMyUser(userStoraged);
+            // setIsMyUserSet(true);
+
+            // if(!joinedOnRoom) {
+            //     socket.emit(constants.events.JOIN_ROOM, {
+            //         user: {
+            //             username: userStoraged.username
+            //         },
+            //         room: {
+            //             roomID,
+            //             quizID
+            //         }
+            //     });
+            //     setJoinedOnRoom(true);
+            // } 
+        }
+    }, []);
 
     useEffect(() => {
         socket.on(constants.events.NEW_USER_ON_ROOM, ({ room, user }) => {
@@ -129,7 +122,7 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
 
             // Verificar se sou o novo dono da sala
             const storagedUser = LocalDatabase.getUser();
-            if(room.owner.email === storagedUser.email)
+            if(room.owner.username === storagedUser.username)
                 setIsOwner(true);
         });
 
@@ -145,12 +138,12 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
             setTeams(teams);
             setGamePoints(points);
             setRoom(room);
-            setIsOwner(room.owner.email === storagedUser.email);
+            setIsOwner(room.owner.username === storagedUser.username);
             setQuestionsQuantity(questionsQuantity);
 
             for (const teamID in teams) {
                 const users = teams[teamID].members;
-                const isMyTeam = users.some((user: User) => user.email === storagedUser.email);
+                const isMyTeam = users.some((user: User) => user.username === storagedUser.username);
                 if(isMyTeam) setMyTeam(teamID);
             }
         });
@@ -225,8 +218,7 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
             return toast.error('Preencha seu nome de usuário!');
 
         const myUserData = {
-            name: username,
-            email: session.user.email
+            username: username
         }
 
         setIsMyUserSet(true);
@@ -246,17 +238,17 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
 
     function handleTeamOptionChanged(teamID: number, user: User) {
         const currentTeams = {...choicedTeams};
-        currentTeams[user.email] = { teamID, user };
+        currentTeams[user.username] = { teamID, user };
         setChoicedTeams(currentTeams);
 
         // TODO: sincronizar alterações de time (refletir em todas as telas)
     }
 
     function handleClickStartGameButton() {
-        const designatedUsersEmail = [];
+        const designatedUsers = [];
         const teamsData: TeamsMap = {};
-        for (const email in choicedTeams) {
-            const teamData = choicedTeams[email];
+        for (const username in choicedTeams) {
+            const teamData = choicedTeams[username];
             const { teamID } = teamData;
             if(!teamsData[teamID]) {
                 teamsData[teamID] = {
@@ -268,7 +260,7 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
             } else {
                 teamsData[teamID].members.push(teamData.user)
             }
-            designatedUsersEmail.push(email);
+            designatedUsers.push(username);
         }
 
         // Verificar se há no mímino 2 times com usuários
@@ -278,7 +270,7 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
         }
 
         // Verificar se todos foram atribuidos
-        if(room.users.length !== designatedUsersEmail.length) {
+        if(room.users.length !== designatedUsers.length) {
             alert('Designe todos usuários em alguma sala.')
             return;
         }
@@ -293,10 +285,6 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                 ...room,
             }
         });
-    }
-
-    function handleAnswerOptionChoiced(optionID: string) {
-        setAnswerOptionChoiced(optionID);
     }
 
     function handleClickAnswerQuestionButton() {
@@ -333,10 +321,6 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
         });
     }
 
-    if(loading) return <div className={styles.container}><span>Carregando...</span></div>;
-
-    if(!loading && !session) return <PermissionDenied />;
-
     return (
         <>
             <TimeBar 
@@ -344,7 +328,6 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                     timeLeft={timeLeftToAnswer}
                 />
             <div className={styles.container}>
-                <p>Restam: {timeLeftToAnswer}s</p>
                 {!isMyUserSet ? (
                     <form onSubmit={handleJoinRoomFormSubmit}>
                         <Input
@@ -363,31 +346,31 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                             <h2>Lista de usuários na sala</h2>
                             <ul>
                                 {room && room.users && room.users.map((user: User) => (
-                                    <li key={user.userID}>
-                                        <span>{user.name}</span>
+                                    <li key={user.username}>
+                                        <span>{user.username}</span>
                                         <div>
-                                            <label htmlFor={`team-1-${user.email}`}>
+                                            <label htmlFor={`team-1-${user.username}`}>
                                                 Time 01
                                                 <input
                                                     type="radio" 
-                                                    name={`team-${user.email}`} 
-                                                    id={`team-1-${user.email}`}
+                                                    name={`team-${user.username}`}
+                                                    id={`team-1-${user.username}`}
                                                     value={1} 
                                                     disabled={!isOwner}
                                                     onChange={(event) => handleTeamOptionChanged(Number(event.target.value), user)}
-                                                    checked={choicedTeams[user.email]?.teamID === 1}
+                                                    checked={choicedTeams[user.username]?.teamID === 1}
                                                 />
                                             </label>
-                                            <label htmlFor={`team-2-${user.email}`}>
+                                            <label htmlFor={`team-2-${user.username}`}>
                                                 Time 02
                                                 <input 
                                                     type="radio" 
-                                                    name={`team-${user.email}`}
-                                                    id={`team-2-${user.email}`}
+                                                    name={`team-${user.username}`}
+                                                    id={`team-2-${user.username}`}
                                                     value={2}
                                                     disabled={!isOwner}
                                                     onChange={(event) => handleTeamOptionChanged(Number(event.target.value), user)}
-                                                    checked={choicedTeams[user.email]?.teamID === 2}
+                                                    checked={choicedTeams[user.username]?.teamID === 2}
                                                 />
                                             </label>
                                         </div>
@@ -438,13 +421,13 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                                                     {currentQuestion.options.map(option => (
                                                         <li key={option.id}>
                                                             <label htmlFor={`question-${option.id}`}>
-                                                                <input 
+                                                                <input
                                                                     type="radio" 
                                                                     value={option.id} 
                                                                     name={`question`} 
                                                                     id={`question-${option.id}`}
                                                                     checked={answerOptionChoiced === option.id}
-                                                                    onChange={() => handleAnswerOptionChoiced(option.id)}
+                                                                    onChange={() => setAnswerOptionChoiced(option.id)}
                                                                     disabled={currentTeam !== myTeam}
                                                                 /> {option.value}
                                                             </label>
@@ -481,7 +464,7 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                                         <div key={team.teamID} className={styles.team}>
                                             <h4>{team.name} {Number(myTeam) === team.teamID ? '(Meu time)' : ''}</h4>
                                             {team.members.map((user: User) => (
-                                                <span key={user.userID}>{user.name}</span>
+                                                <span key={user.username}>{user.username}</span>
                                             ))}
                                         </div>
                                     ))}
