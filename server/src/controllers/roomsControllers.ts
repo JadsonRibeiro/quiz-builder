@@ -26,11 +26,12 @@ export default class QuizController {
   }
 
   joinRoom(socket: Socket, { room, user }: JoinRoomData): void {
-    const userID = socket.id;
     const roomID = room.roomID;
-    console.log("User joined on room with socketID", userID, user, room);
+    console.log("User joined on room with socketID", socket.id, user, room);
     
-    const updatedUser = this.updateGlobalUserData(userID, roomID, user);
+    // Verificar se já há algum usuário com o mesmo username
+
+    const updatedUser = this.updateGlobalUserData(socket.id, roomID, user);
     const updatedRoom = this.joinUserOnRoom(socket, roomID, updatedUser, room);
 
     // Send to other on room
@@ -204,15 +205,15 @@ export default class QuizController {
   }
 
   private logoutUser(socket: Socket) {
-    const userID = socket.id;
-    const user = this.users.get(userID);
+    const socketID = socket.id;
+    const user = this.users.get(socketID);
 
     if(!user) return;
 
     const roomID  = user.roomID;
 
     // Remove usuario da lista de usuários
-    this.users.delete(userID);
+    this.users.delete(socketID);
 
     // Verifica se a sala ainda existe
     if(!this.rooms.has(roomID)) {
@@ -224,7 +225,7 @@ export default class QuizController {
     // Remove usuário da sala
     const room = this.rooms.get(roomID);
     const usersOnRoom = room.users;
-    const filteredUsers = usersOnRoom.filter(user => user.userID !== userID);
+    const filteredUsers = usersOnRoom.filter(u => u.username !== user.username);
     room.users = filteredUsers;
 
     // Se não tiver mais ninguém na sala, exclui ela
@@ -236,7 +237,7 @@ export default class QuizController {
 
     // Verifica se usuário que saiu era o dono da sala. Se for, passar posse para outro
     const currentOwner = room.owner;
-    if(currentOwner.userID === user.userID) {
+    if(currentOwner.username === user.username) {
       const newOnwer = filteredUsers[0];
       room.owner = newOnwer;
     }
@@ -246,27 +247,27 @@ export default class QuizController {
     socket.to(roomID).emit(constants.events.USER_DISCONNECTED, { user, room });
   }
 
-  private updateGlobalUserData(userID: string, roomID: string, user: User): User {
-    let oldUserData = this.users.get(userID) ?? {};
+  private updateGlobalUserData(socketID: string, roomID: string, user: User): User {
+    let oldUserData = this.users.get(socketID) ?? {};
 
-    // Verifica se já havia um usuário com o mesmo email
+    // Verifica se já havia um usuário com o mesmo username
     // Se houver, remove-o
     this.users.forEach((currentUser, id) => {
-      if(currentUser.email === user.email) {
+      if(currentUser.username === user.username) {
         this.users.delete(id);
       }
     });
 
     const updatedUser: User = {
-        userID,
-        roomID,
-        ...oldUserData,
-        ...user
+      socketID,
+      roomID,
+      ...oldUserData,
+      ...user
     };
 
-    this.users.set(userID, updatedUser);
+    this.users.set(socketID, updatedUser);
 
-    return this.users.get(userID);
+    return this.users.get(socketID);
   }
 
   private joinUserOnRoom(socket: Socket, roomID: string, user: User, room: Room): Room {
@@ -284,8 +285,8 @@ export default class QuizController {
       users = currentRoom.users;
     }
     
-    // Verifica se já havia um usuário com o mesmo email. Se houver, remove-o.
-    users = users.filter(currentUser => currentUser.email !== user.email);
+    // Verifica se já havia um usuário com o mesmo username. Se houver, remove-o.
+    users = users.filter(currentUser => currentUser.username !== user.username);
     
     users.push(user);
 

@@ -5,15 +5,25 @@
 }
 
 .userOnRoomList {
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    align-items: center;
+
+    h2 {
+        font-size: 2rem;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+
     ul {
-        margin-top: 1rem;
+        margin-bottom: 1.5rem;
 
         li {
             list-style: none;
-            margin-left: 1rem;
 
             & + li {
-                margin-top: 1rem;
+                margin-top: 1.5rem;
             }
 
             span {
@@ -21,6 +31,7 @@
                 margin-bottom: 0.5rem;
                 font-size: 1.25rem;
             }
+
             label {
                 input {
                     margin-right: 1rem;
@@ -73,14 +84,12 @@
                 margin-bottom: 1rem;
             }
     
-            ul {
-                li {
-                    list-style: none;
-                    margin-left: 0.5rem;
-    
-                    & + li {
-                        margin-top: 0.5rem;
-                    }
+            .options {
+                display: flex;
+                flex-direction: column;
+
+                button {
+                    margin-bottom: 1rem;
                 }
             }
     
@@ -98,8 +107,23 @@
             min-width: 200px;
     
             .team {
-                margin-bottom: 1rem;
+                padding: 1rem 0;
+
+                h4 {
+                    font-size: 1.25rem;
+                    margin-bottom: 0.75rem;
+                }
+                
+                & + .team {
+                    border-top: 1px solid var(--gray-100);
+                }
+
+                span {
+                    margin-bottom: 0.5px;
+                    display: block;
+                }
             }
+            
         }
     
         .gameFinished {

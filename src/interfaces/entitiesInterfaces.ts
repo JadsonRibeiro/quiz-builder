@@ -22,9 +22,9 @@ export interface Question {
 }
 
 export interface User {
-    userID?: string;
-    name: string;
-    email: string;
+    username: string;
+    socketID?: string;
+    email?: string;
     roomID?: string;
 }
 

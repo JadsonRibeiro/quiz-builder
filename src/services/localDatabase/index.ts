@@ -8,7 +8,7 @@ export interface StorageData<Type> {
 }
 
 export class LocalDatabase {
-    static saveRoom(room: Room) {
+    static saveRoom(room: Omit<Room, 'owner'>) {
         const data = sessionStorage.getItem(FIELD_ROOM);
         const oldRooms = data ? (JSON.parse(data) as StorageData<Room>) : {};
 

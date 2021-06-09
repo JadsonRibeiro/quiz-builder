@@ -1,11 +1,9 @@
-import { useSession } from 'next-auth/client';
-import { useRouter } from 'next/dist/client/router';
+import { useRouter } from 'next/router';
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
-import { PermissionDenied } from '../../components/PermissionDenied';
 
 import { LocalDatabase } from '../../services/localDatabase';
 import api from '../../services/api';
@@ -18,7 +16,6 @@ export default function CreateRoom() {
     const [timeToAnswer, setTimeToAnswer] = useState('');
     
     const router = useRouter();
-    const [session, loading] = useSession();
 
     useEffect(() => {
         if(router.query.quizID) setQuizID(String(router.query.quizID));
@@ -44,19 +41,11 @@ export default function CreateRoom() {
             roomID: roomID,
             name: roomName,
             quizID,
-            owner: {
-                email: session.user.email,
-                name: session.user.name
-            },
             timeToAnswer: timeToAnswer ? Number(timeToAnswer) : 30
         });
 
         router.push(`/sala/${roomID}/${quizID}?timeToAnswer=${timeToAnswer}`);
     }
-
-    if(loading) return <div className={styles.container}><span>Carregando...</span></div>;
-
-    if(!loading && !session) return <PermissionDenied />;
 
     return (
         <div className={styles.container}>
