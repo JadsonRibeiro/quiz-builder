@@ -1,0 +1,23 @@
+.container {
+    display: flex;
+    align-items: center;
+    height: 3rem;
+    padding: 1rem;
+    border: 1px solid var(--gray-100);
+    border-radius: 4px;
+    background: var(--white);
+    transition: 0.2s;
+
+    &.clicked {
+        background: var(--green);
+        font-weight: bold;
+    }
+
+    &.disabled {
+        opacity: 0.7;
+    }
+
+    &:hover {
+        box-shadow: 3px 3px 5px var(--gray-100);
+    }
+}

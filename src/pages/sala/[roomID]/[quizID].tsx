@@ -17,6 +17,7 @@ import { constants } from '../../../util/contants';
 
 import { TimeBar } from '../../../components/TimerBar';
 import { useInterval } from '../../../hooks/useInterval';
+import { OptionButton } from '../../../components/OptionButton';
 
 const socket = getSocket('room');
 
@@ -124,6 +125,8 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
             const storagedUser = LocalDatabase.getUser();
             if(room.owner.username === storagedUser.username)
                 setIsOwner(true);
+
+            toast.info(`${user.username} saiu da sala.`);
         });
 
         socket.on(constants.events.GAME_STARTED, ({ teams, points, room, questionsQuantity }: { teams: TeamsMap, points: GamePoints, room: Room, questionsQuantity: number }) => {
@@ -417,23 +420,17 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                                         ) : (
                                             <div className={styles.question}>
                                                 <h3>Pergunta ({currentQuestionPosition} / {questionsQuantity}): {currentQuestion.question}</h3>
-                                                <ul>
+                                                <div className={styles.options}>
                                                     {currentQuestion.options.map(option => (
-                                                        <li key={option.id}>
-                                                            <label htmlFor={`question-${option.id}`}>
-                                                                <input
-                                                                    type="radio" 
-                                                                    value={option.id} 
-                                                                    name={`question`} 
-                                                                    id={`question-${option.id}`}
-                                                                    checked={answerOptionChoiced === option.id}
-                                                                    onChange={() => setAnswerOptionChoiced(option.id)}
-                                                                    disabled={currentTeam !== myTeam}
-                                                                /> {option.value}
-                                                            </label>
-                                                        </li>
+                                                        <OptionButton
+                                                            key={option.id}
+                                                            clicked={answerOptionChoiced === option.id}
+                                                            onClick={() => setAnswerOptionChoiced(option.id)}
+                                                            disabled={currentTeam !== myTeam || waitingNextQuestion}
+                                                        > {option.value}
+                                                        </OptionButton>
                                                     ))}
-                                                </ul>
+                                                </div>
                                                 {waitingNextQuestion && currentQuestion.reference && (
                                                     <a 
                                                         href={currentQuestion.reference}
