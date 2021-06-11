@@ -41,8 +41,7 @@ export function usePeerJS({
         }
     }, [call])
 
-    async function makeCall(peerID: string) {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    function makeCall(peerID: string, stream: MediaStream) {
         const call = peer.call(peerID, stream);
 
         call.on('stream', (stream: MediaStream) => { onStreamReceived(call, stream) });
