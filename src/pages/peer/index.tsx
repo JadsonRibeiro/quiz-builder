@@ -1,46 +1,36 @@
 import { useState } from "react";
-import usePeerJS from '../../hooks/usePeerJS';
+import { usePeerJS } from '../../hooks/usePeerJS';
 import { Audio } from "../../components/Audio";
 
 export default function Peer() {
     const [peerID, setPeerID] = useState('');
     const [mediaStreams, setMediaStreams] = useState<MediaStream[]>([]);
 
-    const { peer } = usePeerJS({
-        onPeerOpen: (myPeerID) => { console.log('Open', myPeerID) },
-        onPeerConnection: (data) => { console.log('Connection', data) },
-        onPeerCall: async (call) => {
+    const { peer, makeCall } = usePeerJS({
+        onOpen: (myPeerID) => { 
+            console.log('Open', myPeerID);
+        },
+        onConnection: (data) => { console.log('Connection', data) },
+        onCall: async (call) => {
             console.log('Call received', call);
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             call.answer(stream);
-
-            call.on('stream', (streamReceived: MediaStream) => {
-                console.log('Stream feedback received', streamReceived);
-                setMediaStreams(oldMediaStreams => [
-                    ...oldMediaStreams,
-                    streamReceived
-                ]);
-            });
-        }
+        },
+        onStreamReceived: (call, stream) => { 
+            console.log('Stream received', call, stream);
+            setMediaStreams(oldStreams => [
+                ...oldStreams,
+                stream
+            ]);
+        },
+        onCallClosed: (call) => console.log('Call closed', call),
+        onCallError: (call, error) => console.log('Error on call', call, error)
     });
 
     console.log('Peer', peer);
 
-    async function makeCall() {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        const call = peer.call(peerID, stream);
-
-        call.on('stream', (streamReceived: MediaStream) => {
-            console.log('Stream feedback received', streamReceived);
-            setMediaStreams(oldMediaStreams => [
-                ...oldMediaStreams,
-                streamReceived
-            ]);
-        });
-
-        call.on('close', () => console.log('Call closed'));
-
-        call.on('error', (err) => console.log('Error on call', err));
+    async function handleMakeCall() {
+        makeCall(peerID);
     }
 
     return (
@@ -55,7 +45,7 @@ export default function Peer() {
             {mediaStreams.map(mediaStream => (
                 <Audio key={mediaStream.id} srcObject={mediaStream} controls autoPlay />
             ))}
-            <button onClick={makeCall}>
+            <button onClick={handleMakeCall}>
                 Ligar
             </button>
         </div>

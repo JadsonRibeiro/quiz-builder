@@ -1,6 +1,6 @@
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/dist/client/router';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { FiLink, FiShare2 } from 'react-icons/fi'
 
@@ -11,13 +11,15 @@ import getSocket from './../../../services/getSocket'
 
 import { Input } from '../../../components/Input';
 import { Button } from '../../../components/Button';
+import { TimeBar } from '../../../components/TimerBar';
+import { OptionButton } from '../../../components/OptionButton';
+
+import { constants } from '../../../util/contants';
+import { usePeerJS } from '../../../hooks/usePeerJS';
+import { useInterval } from '../../../hooks/useInterval';
 
 import styles from './styles.module.scss';
-import { constants } from '../../../util/contants';
-
-import { TimeBar } from '../../../components/TimerBar';
-import { useInterval } from '../../../hooks/useInterval';
-import { OptionButton } from '../../../components/OptionButton';
+import { Audio } from '../../../components/Audio';
 
 const socket = getSocket('room');
 
@@ -41,6 +43,9 @@ interface RoomPageProps {
 }
 
 export default function RoomPage({ timeToAnswer }: RoomPageProps) {
+
+    console.log('Time to answer', timeToAnswer);
+
     const [isOwner, setIsOwner] = useState(false);
     const [username, setUsername] = useState('');
     const [myUser, setMyUser] = useState<User>();
@@ -65,12 +70,37 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
     const [gameFinished, setGameFinished] = useState(false);
     const [winners, setWinners] = useState<Team[]>([]);
 
+    const [myPeerID, setMyPeerID] = useState('');
+    const [mediaStreams, setMediaStreams] = useState<MediaStream[]>([]);
+
     const router = useRouter();
 
-    useInterval(
-        () => {
-            setTimeLeftToAnswer(oldValue => oldValue - 1)
+    const { peer, makeCall } = usePeerJS({
+        onOpen: (myPeerID) => { 
+            console.log('Open', myPeerID);
+            setMyPeerID(myPeerID);
         },
+        onConnection: (data) => { console.log('Connection', data) },
+        onCall: async (call) => {
+            console.log('Call received', call);
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            call.answer(stream);
+        },
+        onStreamReceived: (call, stream) => { 
+            console.log('Stream received', call, stream);
+            setMediaStreams(oldStreams => [
+                ...oldStreams,
+                stream
+            ]);
+        },
+        onCallClosed: (call) => console.log('Call closed', call),
+        onCallError: (call, error) => console.log('Error on call', call, error)
+    });
+
+    console.log('Peer', peer);
+
+    useInterval(
+        () => setTimeLeftToAnswer(oldValue => oldValue - 1),
         isTimerRunning ? 1000 : null
     );
 
@@ -87,35 +117,33 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
             setIsOwner(!!storagedRoom);
         }
 
-        const userStoraged = LocalDatabase.getUser();
-        console.log('Storaged user', userStoraged);             
+        const userStoraged = LocalDatabase.getUser();          
         if(userStoraged) {
             setUsername(userStoraged.username);
             setMyUser(userStoraged);
-            // setIsMyUserSet(true);
-
-            // if(!joinedOnRoom) {
-            //     socket.emit(constants.events.JOIN_ROOM, {
-            //         user: {
-            //             username: userStoraged.username
-            //         },
-            //         room: {
-            //             roomID,
-            //             quizID
-            //         }
-            //     });
-            //     setJoinedOnRoom(true);
-            // } 
         }
     }, []);
 
     useEffect(() => {
+        console.log('Use Effect called')
+        socket.off(constants.events.NEW_USER_ON_ROOM);
         socket.on(constants.events.NEW_USER_ON_ROOM, ({ room, user }) => {
             console.log('New user on Room', user);
             console.log('Room updated', room);
+            toast.info(`${user.username} entrou na sala!`);
             setRoom(room);
-        });
 
+            // Verifica se novo usuário não é o meu. Se não for, liga para ele
+            const storagedUser = LocalDatabase.getUser();
+            console.log('Storaged username', storagedUser.username)
+            console.log('username', user.username)
+            if(storagedUser.username != user.username) {
+                makeCall(user.peerID);
+            }
+        });
+    }, [peer?.id]);
+
+    useEffect(() => {
         socket.on(constants.events.USER_DISCONNECTED, ({ room, user }) => {
             console.log('User disconnected', user);
             console.log('Room updated', room);
@@ -149,6 +177,10 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                 const isMyTeam = users.some((user: User) => user.username === storagedUser.username);
                 if(isMyTeam) setMyTeam(teamID);
             }
+        });
+
+        socket.on(constants.events.NON_EXISTENT_ROOM, () => {
+            toast.error('Essa sala não existe!');
         });
 
         socket.on(constants.events.NEXT_QUESTION, ({
@@ -220,8 +252,9 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
         if(!username) 
             return toast.error('Preencha seu nome de usuário!');
 
-        const myUserData = {
-            username: username
+        const myUserData: User = {
+            username: username,
+            peerID: myPeerID
         }
 
         setIsMyUserSet(true);
@@ -326,10 +359,10 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
 
     return (
         <>
-            <TimeBar 
-                    totalTime={timeToAnswer}
-                    timeLeft={timeLeftToAnswer}
-                />
+            <TimeBar
+                totalTime={timeToAnswer}
+                timeLeft={timeLeftToAnswer}
+            />
             <div className={styles.container}>
                 {!isMyUserSet ? (
                     <form onSubmit={handleJoinRoomFormSubmit}>
@@ -471,11 +504,16 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                     )
                 )}
             </div>
+            <div className={styles.audios}>
+                {mediaStreams.map(mediaStream => (
+                    <Audio key={mediaStream.id} srcObject={mediaStream} controls autoPlay />
+                ))}
+            </div>
         </>
     )
 }
 
-export const getServerSideProps: GetServerSideProps = async ({ req, params, query, resolvedUrl }) => {
+export const getServerSideProps: GetServerSideProps = async ({ query }) => {
     return {
         props: {
             timeToAnswer: query.timeToAnswer ?? 30

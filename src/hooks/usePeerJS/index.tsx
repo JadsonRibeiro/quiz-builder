@@ -1,12 +1,16 @@
 import PeerJS from 'peerjs';
 import { useEffect, useState } from 'react'
 
-export default function usePeerJS({
-    onPeerOpen = (id: string) => {},
-    onPeerConnection = (data: PeerJS.DataConnection) => {},
-    onPeerCall = (call: PeerJS.MediaConnection) => {},
+export function usePeerJS({
+    onOpen = (id: string) => {},
+    onConnection = (data: PeerJS.DataConnection) => {},
+    onCall = (call: PeerJS.MediaConnection) => {},
+    onStreamReceived = (call: PeerJS.MediaConnection, stream: MediaStream) => {},
+    onCallClosed = (call: PeerJS.MediaConnection) => {},
+    onCallError = (call: PeerJS.MediaConnection, error: any) => {},
 }) {
     const [peer, setPeer] = useState<PeerJS>();
+    const [call, setCall] = useState<PeerJS.MediaConnection>();
 
     useEffect(() => {
         import('peerjs').then(({ default: PeerJS }) => {
@@ -17,11 +21,35 @@ export default function usePeerJS({
 
     useEffect(() => {
         if(peer) {
-            peer.on('open', onPeerOpen);
-            peer.on('connection', onPeerConnection);
-            peer.on('call', onPeerCall);
+            peer.on('open', onOpen);
+            peer.on('connection', onConnection);
+            peer.on('call', async (call: PeerJS.MediaConnection) => {
+                onCall(call);
+                setCall(call);
+                
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                call.answer(stream);
+            });
         }
     }, [peer]);
 
-    return { peer };
+    useEffect(() => {
+        if(call) {
+            call.on('stream', (stream: MediaStream) => { onStreamReceived(call, stream) });
+            call.on('close', () => onCallClosed(call));
+            call.on('error', (error: any) => onCallError(call, error));
+        }
+    }, [call])
+
+    async function makeCall(peerID: string) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        const call = peer.call(peerID, stream);
+
+        call.on('stream', (stream: MediaStream) => { onStreamReceived(call, stream) });
+
+        call.on('close', () => onCallClosed(call));
+        call.on('error', (error: any) => onCallError(call, error));
+    }
+
+    return { peer, makeCall };
 }
