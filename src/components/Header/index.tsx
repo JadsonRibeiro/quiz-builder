@@ -29,8 +29,11 @@ export function Header() {
                     <Link href="/">
                         <a>Home</a>
                     </Link>
-                    <Link href="/posts">
+                    <Link href="/quizes">
                         <a>Quizes</a>
+                    </Link>
+                    <Link href="/criar-sala">
+                        <a>Criar sala</a>
                     </Link>
                 </nav>
                 <div className={styles.signInButton}>

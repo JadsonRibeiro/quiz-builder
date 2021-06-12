@@ -1,0 +1,32 @@
+.container {
+    max-width: 1120px;
+    padding: 2rem;
+    margin: 0 auto;
+
+    .quizList {
+        width: 100%;
+        margin-top: 2rem;
+
+        h2 {
+            margin-bottom: 1rem;
+        }
+
+        .quizItem {
+            display: flex;
+            justify-content: space-between;
+            padding: 1rem 0;
+
+            strong { flex: 2 }
+            span { flex: 1 }
+
+            svg {
+                margin-left: 1rem;
+                cursor: pointer;
+            }
+
+            & + .quizItem {
+                border-top: 1px solid var(--gray-300);
+            }
+        }
+    }
+}
