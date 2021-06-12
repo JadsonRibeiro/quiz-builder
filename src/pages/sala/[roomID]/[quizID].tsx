@@ -94,6 +94,7 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
         onCall: async (call) => {
             console.log('Call received', call);
             if(myMediaStream) {
+                console.log('Respondendo chamada', myMediaStream)
                 call.answer(myMediaStream);
             }
         },
@@ -145,8 +146,18 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
 
     useEffect(() => {
         (async () => {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-            setMyMediaStream(stream);
+            let stream: MediaStream;
+            try {
+                stream = await Media.getUserAudio();
+                setMyMediaStream(stream);
+                setIsMicrophoneActive(true);
+            } catch(e) {
+                console.log('Criando midia falsa pois não foi permitido acesso ao áudio', e);
+                stream = Media.createMediaStreamFake();
+                console.log('Media fake', stream)
+                setMyMediaStream(stream);
+                setIsMicrophoneActive(false);
+            }
         })(); 
     }, [])
 
@@ -183,7 +194,7 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
             // Desconectar conexão com ele
             setCallsConnected(calls => {
                 const { [user.peerID]: callToClose, ...updatedCalls } = calls;
-                callToClose.close();
+                callToClose?.close();
                 return updatedCalls;
             });
 
@@ -396,9 +407,15 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
     }
 
     async function toggleMicrophone() {
-        let stream: MediaStream = isMicrophoneActive 
-            ? Media.createMediaStreamFake()
-            : await Media.getUserAudio()
+        let stream: MediaStream;
+        try {
+            stream = isMicrophoneActive 
+                ? Media.createMediaStreamFake()
+                : await Media.getUserAudio()
+        } catch(e) {
+            toast.info('Você precisa liberar o accesso ao microfone.');
+            return;
+        }
         
         // Fechar todas conecções
         for (const peerID in callsConnected) {
@@ -406,6 +423,7 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
             makeCall(peerID, stream);
         }
 
+        setMyMediaStream(stream);
         setIsMicrophoneActive(oldValue => !oldValue);
         setCallsConnected({});
         setMediaStreams({});
@@ -570,7 +588,7 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                 </button>
             )}
             <div className={styles.audios}>
-                <span>Meu PeerID: {myPeerID}</span>
+                <p>Meu PeerID: {myPeerID}</p>
                 {Object.keys(mediaStreams).map(peerID => (
                     <div key={peerID}>
                         <span>{peerID}</span>
