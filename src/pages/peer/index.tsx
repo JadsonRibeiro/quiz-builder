@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { usePeerJS } from '../../hooks/usePeerJS';
 import { Audio } from "../../components/Audio";
+import Media from "../../services/media";
 
 export default function Peer() {
     const [peerID, setPeerID] = useState('');
@@ -30,7 +31,8 @@ export default function Peer() {
     console.log('Peer', peer);
 
     async function handleMakeCall() {
-        makeCall(peerID);
+        const stream = await Media.getUserAudio();
+        makeCall(peerID, stream);
     }
 
     return (
