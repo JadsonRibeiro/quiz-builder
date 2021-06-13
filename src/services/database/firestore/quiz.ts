@@ -42,6 +42,14 @@ class FirestoreQuiz implements QuizServiceInterface {
     }
 
     async delete(quizID: string) {
+        // Delete questions too
+        const quiz = await this.get(quizID);
+        if(quiz.questions) {
+            for (const question of quiz.questions) {
+                await this.db.collection('quizes').doc(quizID).collection('questions').doc(question.id).delete();
+            }
+        }
+
         await this.db.collection('quizes').doc(quizID).delete();
     }
 
