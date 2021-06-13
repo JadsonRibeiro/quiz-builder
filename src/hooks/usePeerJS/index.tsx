@@ -1,5 +1,12 @@
 import PeerJS from 'peerjs';
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react';
+
+// TODO: use dynamic to import PeerJS
+// import dynamic from 'next/dynamic';
+// const DynamicPeerJS = dynamic<Promise<PeerJS>>(
+//     () => import('peerjs/dist/peerjs').then(res => res),
+//     { ssr: false }
+// )
 
 export function usePeerJS({
     onOpen = (id: string) => {},
