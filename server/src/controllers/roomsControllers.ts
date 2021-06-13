@@ -154,6 +154,12 @@ export default class QuizController {
 
   nextQuestionRequest(socket: Socket, { roomID }) {
     console.log('Solicitando nova pergunta...', roomID);
+    const existingGame = this.games.has(roomID); 
+    if(!existingGame) {
+      this.notifyAllRoom(socket, roomID, constants.events.NON_EXISTENT_ROOM);
+      return; 
+    }
+
     const game = this.games.get(roomID);
 
     // Obtem próxima pergunta
@@ -199,7 +205,7 @@ export default class QuizController {
     this.startGame(socket, { roomID, teams, room });
   }
 
-  private notifyAllRoom(socket: Socket, roomID: string, event: string, data: any) {
+  private notifyAllRoom(socket: Socket, roomID: string, event: string, data = {}) {
     socket.emit(event, data);
     socket.to(roomID).emit(event, data);
   }

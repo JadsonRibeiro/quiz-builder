@@ -37,14 +37,20 @@ export default function CreateRoom() {
         // Generate unique id to room
         const roomID = Date.now().toString(36) + Math.random().toString(36).substring(2);
 
-        LocalDatabase.saveRoom({
+        const roomData = {
             roomID: roomID,
             name: roomName,
             quizID,
             timeToAnswer: timeToAnswer ? Number(timeToAnswer) : 30
-        });
+        }
 
-        router.push(`/sala/${roomID}/${quizID}?timeToAnswer=${timeToAnswer}`);
+        LocalDatabase.saveRoom(roomData);
+
+        if(timeToAnswer)
+            router.push(`/sala/${roomID}/${quizID}?timeToAnswer=${timeToAnswer}`);
+        else 
+            router.push(`/sala/${roomID}/${quizID}`);
+
     }
 
     return (

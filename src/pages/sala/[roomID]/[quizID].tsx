@@ -2,7 +2,8 @@ import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/dist/client/router';
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import { FiLink, FiShare2 } from 'react-icons/fi'
+import { FiLink, FiShare2, FiMic, FiMicOff } from 'react-icons/fi'
+import PeerJS from "peerjs"
 
 import { Question, Room, Team, User } from '../../../interfaces/entitiesInterfaces';
 import { LocalDatabase } from '../../../services/localDatabase';
@@ -11,13 +12,16 @@ import getSocket from './../../../services/getSocket'
 
 import { Input } from '../../../components/Input';
 import { Button } from '../../../components/Button';
+import { TimeBar } from '../../../components/TimerBar';
+import { OptionButton } from '../../../components/OptionButton';
+
+import { constants } from '../../../util/contants';
+import { usePeerJS } from '../../../hooks/usePeerJS';
+import { useInterval } from '../../../hooks/useInterval';
 
 import styles from './styles.module.scss';
-import { constants } from '../../../util/contants';
-
-import { TimeBar } from '../../../components/TimerBar';
-import { useInterval } from '../../../hooks/useInterval';
-import { OptionButton } from '../../../components/OptionButton';
+import { Audio } from '../../../components/Audio';
+import Media from '../../../services/media';
 
 const socket = getSocket('room');
 
@@ -33,7 +37,15 @@ interface GamePoints {
 }
 
 interface TeamsMap {
-    [teamID: number]: Team
+    [teamID: number]: Team;
+}
+
+interface CallsMap {
+    [peerID: string]: PeerJS.MediaConnection;
+}
+
+interface StreamsMap {
+    [peerID: string]: MediaStream;
 }
 
 interface RoomPageProps {
@@ -65,12 +77,50 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
     const [gameFinished, setGameFinished] = useState(false);
     const [winners, setWinners] = useState<Team[]>([]);
 
+    const [myPeerID, setMyPeerID] = useState('');
+    const [mediaStreams, setMediaStreams] = useState<StreamsMap>({});
+    const [callsConnected, setCallsConnected] = useState<CallsMap>({})
+    const [myMediaStream, setMyMediaStream] = useState<MediaStream>();
+    const [isMicrophoneActive, setIsMicrophoneActive] = useState(true);
+
     const router = useRouter();
 
-    useInterval(
-        () => {
-            setTimeLeftToAnswer(oldValue => oldValue - 1)
+    const { peer, makeCall } = usePeerJS({
+        onOpen: (myPeerID) => { 
+            console.log('Open', myPeerID);
+            setMyPeerID(myPeerID);
         },
+        onConnection: (data) => { console.log('Connection', data) },
+        onCall: async (call) => {
+            console.log('Call received', call);
+            if(myMediaStream) {
+                console.log('Respondendo chamada', myMediaStream)
+                call.answer(myMediaStream);
+            }
+        },
+        onStreamReceived: (call, stream) => { 
+            console.log('Stream received', stream);
+            console.log('Call received', call.peer);
+            setMediaStreams(oldMediaStreams => {
+                return {
+                    ...oldMediaStreams,
+                    [call.peer]: stream
+                };
+            });
+
+            setCallsConnected(oldCalls => {
+                return {
+                    ...oldCalls,
+                    [call.peer]: call
+                };
+            });
+        },
+        onCallClosed: (call) => console.log('Call closed', call),
+        onCallError: (call, error) => console.log('Error on call', call, error)
+    });
+
+    useInterval(
+        () => setTimeLeftToAnswer(oldValue => oldValue - 1),
         isTimerRunning ? 1000 : null
     );
 
@@ -87,35 +137,50 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
             setIsOwner(!!storagedRoom);
         }
 
-        const userStoraged = LocalDatabase.getUser();
-        console.log('Storaged user', userStoraged);             
+        const userStoraged = LocalDatabase.getUser();          
         if(userStoraged) {
             setUsername(userStoraged.username);
             setMyUser(userStoraged);
-            // setIsMyUserSet(true);
-
-            // if(!joinedOnRoom) {
-            //     socket.emit(constants.events.JOIN_ROOM, {
-            //         user: {
-            //             username: userStoraged.username
-            //         },
-            //         room: {
-            //             roomID,
-            //             quizID
-            //         }
-            //     });
-            //     setJoinedOnRoom(true);
-            // } 
         }
     }, []);
 
     useEffect(() => {
+        (async () => {
+            let stream: MediaStream;
+            try {
+                stream = await Media.getUserAudio();
+                setMyMediaStream(stream);
+                setIsMicrophoneActive(true);
+            } catch(e) {
+                console.log('Criando midia falsa pois não foi permitido acesso ao áudio', e);
+                stream = Media.createMediaStreamFake();
+                console.log('Media fake', stream)
+                setMyMediaStream(stream);
+                setIsMicrophoneActive(false);
+            }
+        })(); 
+    }, [])
+
+    useEffect(() => {
+        socket.off(constants.events.NEW_USER_ON_ROOM);
         socket.on(constants.events.NEW_USER_ON_ROOM, ({ room, user }) => {
             console.log('New user on Room', user);
             console.log('Room updated', room);
             setRoom(room);
-        });
 
+            // Verifica se novo usuário não é o meu. Se não for, liga para ele
+            const storagedUser = LocalDatabase.getUser();
+            if(storagedUser.username !== user.username) {
+                if(myMediaStream) {
+                    makeCall(user.peerID, myMediaStream);
+                }
+
+                toast.info(`${user.username} entrou na sala!`);
+            }
+        });
+    }, [peer?.id]);
+
+    useEffect(() => {
         socket.on(constants.events.USER_DISCONNECTED, ({ room, user }) => {
             console.log('User disconnected', user);
             console.log('Room updated', room);
@@ -125,6 +190,18 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
             const storagedUser = LocalDatabase.getUser();
             if(room.owner.username === storagedUser.username)
                 setIsOwner(true);
+
+            // Desconectar conexão com ele
+            setCallsConnected(calls => {
+                const { [user.peerID]: callToClose, ...updatedCalls } = calls;
+                callToClose?.close();
+                return updatedCalls;
+            });
+
+            setMediaStreams(streams => {
+                const { [user.peerID]: removedStream, ...updatedStreams } = streams;
+                return updatedStreams;
+            });
 
             toast.info(`${user.username} saiu da sala.`);
         });
@@ -149,6 +226,10 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                 const isMyTeam = users.some((user: User) => user.username === storagedUser.username);
                 if(isMyTeam) setMyTeam(teamID);
             }
+        });
+
+        socket.on(constants.events.NON_EXISTENT_ROOM, () => {
+            toast.error('Essa sala não existe!');
         });
 
         socket.on(constants.events.NEXT_QUESTION, ({
@@ -220,8 +301,9 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
         if(!username) 
             return toast.error('Preencha seu nome de usuário!');
 
-        const myUserData = {
-            username: username
+        const myUserData: User = {
+            username: username,
+            peerID: myPeerID
         }
 
         setIsMyUserSet(true);
@@ -324,12 +406,35 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
         });
     }
 
+    async function toggleMicrophone() {
+        let stream: MediaStream;
+        try {
+            stream = isMicrophoneActive 
+                ? Media.createMediaStreamFake()
+                : await Media.getUserAudio()
+        } catch(e) {
+            toast.info('Você precisa liberar o accesso ao microfone.');
+            return;
+        }
+        
+        // Fechar todas conecções
+        for (const peerID in callsConnected) {
+            callsConnected[peerID].close();
+            makeCall(peerID, stream);
+        }
+
+        setMyMediaStream(stream);
+        setIsMicrophoneActive(oldValue => !oldValue);
+        setCallsConnected({});
+        setMediaStreams({});
+    }
+
     return (
         <>
-            <TimeBar 
-                    totalTime={timeToAnswer}
-                    timeLeft={timeLeftToAnswer}
-                />
+            <TimeBar
+                totalTime={timeToAnswer}
+                timeLeft={timeLeftToAnswer}
+            />
             <div className={styles.container}>
                 {!isMyUserSet ? (
                     <form onSubmit={handleJoinRoomFormSubmit}>
@@ -471,11 +576,31 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                     )
                 )}
             </div>
+            {isMyUserSet && (
+                <button 
+                    className={styles.fixedMicButton}
+                    onClick={toggleMicrophone}
+                >
+                    {isMicrophoneActive 
+                        ? <FiMic color="white" size={20} /> 
+                        : <FiMicOff color="white" size={20} />
+                    }
+                </button>
+            )}
+            <div className={styles.audios}>
+                <p>Meu PeerID: {myPeerID}</p>
+                {Object.keys(mediaStreams).map(peerID => (
+                    <div key={peerID}>
+                        <span>{peerID}</span>
+                        <Audio srcObject={mediaStreams[peerID]} controls autoPlay />
+                    </div>
+                ))}
+            </div>
         </>
     )
 }
 
-export const getServerSideProps: GetServerSideProps = async ({ req, params, query, resolvedUrl }) => {
+export const getServerSideProps: GetServerSideProps = async ({ query }) => {
     return {
         props: {
             timeToAnswer: query.timeToAnswer ?? 30

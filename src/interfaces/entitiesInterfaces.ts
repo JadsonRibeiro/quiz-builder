@@ -24,6 +24,7 @@ export interface Question {
 export interface User {
     username: string;
     socketID?: string;
+    peerID?: string;
     email?: string;
     roomID?: string;
 }
