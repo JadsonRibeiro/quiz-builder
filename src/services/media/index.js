@@ -16,6 +16,6 @@ export default class Media {
 
         return new MediaStream([
             mediaStreamTrack
-        ])
+        ]);
     }
 }
