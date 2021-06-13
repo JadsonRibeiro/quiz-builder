@@ -606,15 +606,9 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                     }
                 </button>
             )}
-            <div className={styles.audios}>
-                <p>Meu PeerID: {myPeerID}</p>
-                {Object.keys(mediaStreams).map(peerID => (
-                    <div key={peerID}>
-                        <span>{peerID}</span>
-                        <Audio srcObject={mediaStreams[peerID]} controls autoPlay />
-                    </div>
-                ))}
-            </div>
+            {Object.keys(mediaStreams).map(peerID => (
+                <Audio key={peerID} srcObject={mediaStreams[peerID]} autoPlay />
+            ))}
         </>
     )
 }
