@@ -374,6 +374,10 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
 
     function handleClickAnswerQuestionButton() {
         console.log('Respondendo pergunta...');
+        
+        if(!answerOptionChoiced)
+            return toast.error('Escolha alguma opção')
+        
 
         socket.emit(constants.events.QUESTION_ANSWERED, {
             roomID, 
@@ -405,6 +409,16 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
             title: room.name
         });
     }
+
+    function isValidURL(str: string) {
+        const pattern = new RegExp('^(https?:\\/\\/)?'+ // protocol
+          '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name
+          '((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
+          '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+ // port and path
+          '(\\?[;&a-z\\d%_.~+=-]*)?'+ // query string
+          '(\\#[-a-z\\d_]*)?$','i'); // fragment locator
+        return !!pattern.test(str);
+      }
 
     async function toggleMicrophone() {
         let stream: MediaStream;
@@ -537,11 +551,16 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                                                     ))}
                                                 </div>
                                                 {waitingNextQuestion && currentQuestion.reference && (
-                                                    <a 
-                                                        href={currentQuestion.reference}
-                                                        className={styles.reference}
-                                                        target="_blank"
-                                                    >Referência da resposta <FiLink /></a>
+                                                    <div className={styles.reference}>
+                                                        {isValidURL(currentQuestion.reference) ? (
+                                                            <a 
+                                                                href={currentQuestion.reference}
+                                                                target="_blank"
+                                                                >Referência da resposta <FiLink /></a>
+                                                        ) : (
+                                                            <span>Referência da resposta: <strong>{currentQuestion.reference}</strong></span>
+                                                        )}
+                                                    </div>
                                                 )}
                                                 <div className={styles.submitButton}>
                                                     {(currentTeam === myTeam) && !waitingNextQuestion && (
