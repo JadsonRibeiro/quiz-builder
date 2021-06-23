@@ -284,6 +284,10 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
 
             setWinners(winnerData.winners);
         });
+
+        return () => {
+            socket.disconnect();
+        }
     }, []);
 
     useEffect(() => {
