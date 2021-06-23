@@ -2,7 +2,7 @@ import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/dist/client/router';
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import { FiLink, FiShare2, FiMic, FiMicOff } from 'react-icons/fi'
+import { FiLink, FiShare2, FiX } from 'react-icons/fi'
 import PeerJS from "peerjs"
 
 import { Question, Room, Team, User } from '../../../interfaces/entitiesInterfaces';
@@ -417,13 +417,13 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
 
     function isValidURL(str: string) {
         const pattern = new RegExp('^(https?:\\/\\/)?'+ // protocol
-          '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name
-          '((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
-          '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+ // port and path
-          '(\\?[;&a-z\\d%_.~+=-]*)?'+ // query string
-          '(\\#[-a-z\\d_]*)?$','i'); // fragment locator
+            '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name
+            '((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
+            '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+ // port and path
+            '(\\?[;&a-z\\d%_.~+=-]*)?'+ // query string
+            '(\\#[-a-z\\d_]*)?$','i'); // fragment locator
         return !!pattern.test(str);
-      }
+    }
 
     async function toggleMicrophone() {
         let stream: MediaStream;
@@ -446,6 +446,18 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
         setIsMicrophoneActive(oldValue => !oldValue);
         setCallsConnected({});
         setMediaStreams({});
+    }
+
+    function handleFinishGameButtonClick() {
+        const res = confirm("Tem certeza que deseja encerrar o jogo?");
+
+        if(!res) return;
+
+        socket.emit(constants.events.FINISH_GAME, { roomID });
+
+        setGameStarted(false);
+        setGameFinished(true);
+        setChoicedTeams({});
     }
 
     if(!isMyUserSet) {
@@ -599,15 +611,25 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                                 )}
                             </>
                         )}
-                        <div className={styles.teams}>
-                            {teams && Object.values(teams).map((team: Team) => (
-                                <div key={team.teamID} className={styles.team}>
-                                    <h4>{team.name} {Number(myTeam) === team.teamID ? '(Meu time)' : ''}</h4>
-                                    {team.members.map((user: User) => (
-                                        <span key={user.username}>{user.username}</span>
-                                    ))}
-                                </div>
-                            ))}
+                        <div>
+                            <div className={styles.teams}>
+                                {teams && Object.values(teams).map((team: Team) => (
+                                    <div key={team.teamID} className={styles.team}>
+                                        <h4>{team.name} {Number(myTeam) === team.teamID ? '(Meu time)' : ''}</h4>
+                                        {team.members.map((user: User) => (
+                                            <span key={user.username}>{user.username}</span>
+                                        ))}
+                                    </div>
+                                ))}
+                            </div>
+                            { isOwner && (
+                                <button 
+                                    className={styles.finishGameButton} 
+                                    onClick={handleFinishGameButtonClick}
+                                >
+                                    <FiX size={20} />
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

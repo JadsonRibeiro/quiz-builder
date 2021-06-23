@@ -104,6 +104,7 @@
     
         .teams {
             min-width: 200px;
+            margin-bottom: 1rem;
     
             .team {
                 padding: 1rem 0;
@@ -144,6 +145,29 @@
                 margin-bottom: 1rem;
             }
         }
+    }
+}
+
+.finishGameButton {
+    position: fixed;
+    bottom: 4.5rem;
+    right: 1rem;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    width: 3rem;
+    height: 3rem;
+    border-radius: 2rem;
+    background: var(--red);
+    color: white;
+    border: none;
+
+    transition: filter 0.2s;
+
+    &:hover {
+        filter: opacity(0.8);
     }
 }
 

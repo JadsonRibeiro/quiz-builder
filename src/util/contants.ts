@@ -10,6 +10,7 @@ export const constants = {
         ANSWER_RESULT: 'answerResult',
         NEXT_QUESTION_REQUEST: 'nextQuestionRequest',
         GAME_FINISHED: 'gameFinished',
+        FINISH_GAME: 'finishGame',
         RESTART_GAME: 'restartGame',
         NON_EXISTENT_ROOM: 'nonExistentRoom'
     }

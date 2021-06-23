@@ -205,6 +205,18 @@ export default class QuizController {
     this.startGame(socket, { roomID, teams, room });
   }
 
+  finishGame(socket: Socket, { roomID }) {
+    console.log('Encerrando jogo...', roomID);
+    const game = this.games.get(roomID);
+
+    this.notifyAllRoom(socket, roomID, constants.events.GAME_FINISHED, {
+      teams: game.teams,
+      points: game.points
+    });
+    
+    this.games.delete(roomID);
+  }
+
   private notifyAllRoom(socket: Socket, roomID: string, event: string, data = {}) {
     socket.emit(event, data);
     socket.to(roomID).emit(event, data);
