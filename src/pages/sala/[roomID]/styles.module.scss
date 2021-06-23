@@ -147,22 +147,6 @@
     }
 }
 
-.fixedMicButton {
-    position: fixed;
-    bottom: 1rem;
-    right: 1rem;
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    width: 3rem;
-    height: 3rem;
-    border-radius: 2rem;
-    background: var(--green);
-    border: none;
-}
-
 .submitButton {
     margin-top: 1.5rem;
 }

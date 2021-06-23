@@ -22,6 +22,7 @@ import { useInterval } from '../../../hooks/useInterval';
 import styles from './styles.module.scss';
 import { Audio } from '../../../components/Audio';
 import Media from '../../../services/media';
+import { FixedMicButton } from '../../../components/FixedMicButton';
 
 const socket = getSocket('room');
 
@@ -443,6 +444,82 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
         setMediaStreams({});
     }
 
+    if(!isMyUserSet) {
+        return (
+            <div className={styles.container}>
+                <form onSubmit={handleJoinRoomFormSubmit}>
+                    <Input
+                        id="username"
+                        label="Informe seu nome de usuário"
+                        value={username}
+                        onChange={e => setUsername(e.target.value)}
+                    />
+                    <div className={styles.submitButton}>
+                        <Button>Ingressar</Button>
+                    </div>
+                </form>
+            </div>
+        )
+    }
+
+    if(!gameStarted) {
+        return (
+            <div className={styles.container}>
+                <div className={styles.userOnRoomList}>
+                    <h2>Lista de usuários na sala</h2>
+                    <ul>
+                        {room && room.users && room.users.map((user: User) => (
+                            <li key={user.username}>
+                                <span>{user.username}</span>
+                                <div>
+                                    <label htmlFor={`team-1-${user.username}`}>
+                                        Time 01
+                                        <input
+                                            type="radio" 
+                                            name={`team-${user.username}`}
+                                            id={`team-1-${user.username}`}
+                                            value={1} 
+                                            disabled={!isOwner}
+                                            onChange={(event) => handleTeamOptionChanged(Number(event.target.value), user)}
+                                            checked={choicedTeams[user.username]?.teamID === 1}
+                                        />
+                                    </label>
+                                    <label htmlFor={`team-2-${user.username}`}>
+                                        Time 02
+                                        <input 
+                                            type="radio" 
+                                            name={`team-${user.username}`}
+                                            id={`team-2-${user.username}`}
+                                            value={2}
+                                            disabled={!isOwner}
+                                            onChange={(event) => handleTeamOptionChanged(Number(event.target.value), user)}
+                                            checked={choicedTeams[user.username]?.teamID === 2}
+                                        />
+                                    </label>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+
+                    {isOwner && (
+                        <>
+                            <div className={styles.submitButton}>
+                                <Button onClick={handleClickStartGameButton}>Iniciar jogo</Button>
+                            </div>
+                            <div className={styles.submitButton}>
+                                <Button onClick={shareRoomLink}><FiShare2 />Compartilhar link da sala</Button>
+                            </div>
+                        </>
+                    )}
+                </div>
+                <FixedMicButton isActive={isMicrophoneActive} onClick={toggleMicrophone} />
+                {Object.keys(mediaStreams).map(peerID => (
+                    <Audio key={peerID} srcObject={mediaStreams[peerID]} autoPlay />
+                ))}
+            </div>
+        )
+    }
+
     return (
         <>
             <TimeBar
@@ -450,162 +527,88 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                 timeLeft={timeLeftToAnswer}
             />
             <div className={styles.container}>
-                {!isMyUserSet ? (
-                    <form onSubmit={handleJoinRoomFormSubmit}>
-                        <Input
-                            id="username"
-                            label="Informe seu nome de usuário"
-                            value={username}
-                            onChange={e => setUsername(e.target.value)}
-                        />
-                        <div className={styles.submitButton}>
-                            <Button>Ingressar</Button>
-                        </div>
-                    </form>
-                ) : (
-                    !gameStarted ? (
-                        <div className={styles.userOnRoomList}>
-                            <h2>Lista de usuários na sala</h2>
-                            <ul>
-                                {room && room.users && room.users.map((user: User) => (
-                                    <li key={user.username}>
-                                        <span>{user.username}</span>
-                                        <div>
-                                            <label htmlFor={`team-1-${user.username}`}>
-                                                Time 01
-                                                <input
-                                                    type="radio" 
-                                                    name={`team-${user.username}`}
-                                                    id={`team-1-${user.username}`}
-                                                    value={1} 
-                                                    disabled={!isOwner}
-                                                    onChange={(event) => handleTeamOptionChanged(Number(event.target.value), user)}
-                                                    checked={choicedTeams[user.username]?.teamID === 1}
-                                                />
-                                            </label>
-                                            <label htmlFor={`team-2-${user.username}`}>
-                                                Time 02
-                                                <input 
-                                                    type="radio" 
-                                                    name={`team-${user.username}`}
-                                                    id={`team-2-${user.username}`}
-                                                    value={2}
-                                                    disabled={!isOwner}
-                                                    onChange={(event) => handleTeamOptionChanged(Number(event.target.value), user)}
-                                                    checked={choicedTeams[user.username]?.teamID === 2}
-                                                />
-                                            </label>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-
-                            {isOwner && (
-                                <>
-                                    <div className={styles.submitButton}>
-                                        <Button onClick={handleClickStartGameButton}>Iniciar jogo</Button>
-                                    </div>
-                                    <div className={styles.submitButton}>
-                                        <Button onClick={shareRoomLink}><FiShare2 />Compartilhar link da sala</Button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    ) : (
-                        <div className={styles.game}>
-                            <div className={styles.pontuation}>
-                                {gamePoints && Object.keys(gamePoints).map((teamID: string) => (
-                                    <div key={teamID} className={currentTeam === teamID ? `${styles.item} ${styles.currentTeam}` : styles.item}>
-                                        <span>{teams[Number(teamID)].name}</span>
-                                        <strong>{gamePoints[teamID]}</strong>
-                                    </div>
-                                ))}
+                <div className={styles.game}>
+                    <div className={styles.pontuation}>
+                        {gamePoints && Object.keys(gamePoints).map((teamID: string) => (
+                            <div key={teamID} className={currentTeam === teamID ? `${styles.item} ${styles.currentTeam}` : styles.item}>
+                                <span>{teams[Number(teamID)].name}</span>
+                                <strong>{gamePoints[teamID]}</strong>
                             </div>
-                            <div className={styles.gameContent}>
-                                {gameFinished ? (
-                                    <div className={styles.gameFinished}>
-                                        <span>{winners.length > 1 ? 'Empate! Os vencedores foram' : 'O vencedor foi'}</span>
-                                        {winners.map(winner => <strong key={winner.teamID}>{winner.name}</strong>)}
-                                        <Button 
-                                            disabled={!isOwner}
-                                            onClick={handleClickRestartGameButton}>
-                                            Jogar outra partida
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <>
-                                        {!currentQuestion ? (
-                                            <p>Esperando a primeira pergunta...</p>
-                                        ) : (
-                                            <div className={styles.question}>
-                                                <h3>Pergunta ({currentQuestionPosition} / {questionsQuantity}): {currentQuestion.question}</h3>
-                                                <div className={styles.options}>
-                                                    {currentQuestion.options.map(option => (
-                                                        <OptionButton
-                                                            key={option.id}
-                                                            clicked={answerOptionChoiced === option.id}
-                                                            onClick={() => setAnswerOptionChoiced(option.id)}
-                                                            disabled={currentTeam !== myTeam || waitingNextQuestion}
-                                                        > {option.value}
-                                                        </OptionButton>
-                                                    ))}
-                                                </div>
-                                                {waitingNextQuestion && currentQuestion.reference && (
-                                                    <div className={styles.reference}>
-                                                        {isValidURL(currentQuestion.reference) ? (
-                                                            <a 
-                                                                href={currentQuestion.reference}
-                                                                target="_blank"
-                                                                >Referência da resposta <FiLink /></a>
-                                                        ) : (
-                                                            <span>Referência da resposta: <strong>{currentQuestion.reference}</strong></span>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                <div className={styles.submitButton}>
-                                                    {(currentTeam === myTeam) && !waitingNextQuestion && (
-                                                        <Button
-                                                            onClick={handleClickAnswerQuestionButton}
-                                                        > Responder
-                                                        </Button>
-                                                    )}
-                                                    {waitingNextQuestion && (
-                                                        <Button
-                                                            onClick={requestNextQuestion}
-                                                        > Próxima pergunta
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </>
+                        ))}
+                    </div>
+                    <div className={styles.gameContent}>
+                        {gameFinished ? (
+                            <div className={styles.gameFinished}>
+                                <span>{winners.length > 1 ? 'Empate! Os vencedores foram' : 'O vencedor foi'}</span>
+                                {winners.map(winner => <strong key={winner.teamID}>{winner.name}</strong>)}
+                                { isOwner && (
+                                    <Button disabled={!isOwner} onClick={handleClickRestartGameButton}>
+                                        Jogar outra partida
+                                    </Button>
                                 )}
-                                <div className={styles.teams}>
-                                    {teams && Object.values(teams).map((team: Team) => (
-                                        <div key={team.teamID} className={styles.team}>
-                                            <h4>{team.name} {Number(myTeam) === team.teamID ? '(Meu time)' : ''}</h4>
-                                            {team.members.map((user: User) => (
-                                                <span key={user.username}>{user.username}</span>
+                            </div>
+                        ) : (
+                            <>
+                                {!currentQuestion ? (
+                                    <p>Esperando a primeira pergunta...</p>
+                                ) : (
+                                    <div className={styles.question}>
+                                        <h3>Pergunta ({currentQuestionPosition} / {questionsQuantity}): {currentQuestion.question}</h3>
+                                        <div className={styles.options}>
+                                            {currentQuestion.options.map(option => (
+                                                <OptionButton
+                                                    key={option.id}
+                                                    clicked={answerOptionChoiced === option.id}
+                                                    onClick={() => setAnswerOptionChoiced(option.id)}
+                                                    disabled={currentTeam !== myTeam || waitingNextQuestion}
+                                                > {option.value}
+                                                </OptionButton>
                                             ))}
                                         </div>
+                                        {waitingNextQuestion && currentQuestion.reference && (
+                                            <div className={styles.reference}>
+                                                {isValidURL(currentQuestion.reference) ? (
+                                                    <a 
+                                                        href={currentQuestion.reference}
+                                                        target="_blank"
+                                                        >Referência da resposta <FiLink /></a>
+                                                ) : (
+                                                    <span>Referência da resposta: <strong>{currentQuestion.reference}</strong></span>
+                                                )}
+                                            </div>
+                                        )}
+                                        <div className={styles.submitButton}>
+                                            {(currentTeam === myTeam) && !waitingNextQuestion && (
+                                                <Button
+                                                    onClick={handleClickAnswerQuestionButton}
+                                                > Responder
+                                                </Button>
+                                            )}
+                                            {waitingNextQuestion && (
+                                                <Button
+                                                    onClick={requestNextQuestion}
+                                                > Próxima pergunta
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                        <div className={styles.teams}>
+                            {teams && Object.values(teams).map((team: Team) => (
+                                <div key={team.teamID} className={styles.team}>
+                                    <h4>{team.name} {Number(myTeam) === team.teamID ? '(Meu time)' : ''}</h4>
+                                    {team.members.map((user: User) => (
+                                        <span key={user.username}>{user.username}</span>
                                     ))}
                                 </div>
-                            </div>
+                            ))}
                         </div>
-                    )
-                )}
+                    </div>
+                </div>
             </div>
-            {isMyUserSet && (
-                <button 
-                    className={styles.fixedMicButton}
-                    onClick={toggleMicrophone}
-                >
-                    {isMicrophoneActive 
-                        ? <FiMic color="white" size={20} /> 
-                        : <FiMicOff color="white" size={20} />
-                    }
-                </button>
-            )}
+            <FixedMicButton isActive={isMicrophoneActive} onClick={toggleMicrophone} />
             {Object.keys(mediaStreams).map(peerID => (
                 <Audio key={peerID} srcObject={mediaStreams[peerID]} autoPlay />
             ))}
