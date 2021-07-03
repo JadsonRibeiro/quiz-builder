@@ -6,7 +6,9 @@
 
 :root {
 
+    --gray-50: #eeeef5;
     --gray-100: #e1e1e6;
+    --gray-200: #cbcbcf;
     --gray-300: #a8a8b3;
     --gray-700: #323238;
     --gray-800: #29292e;
@@ -39,10 +41,6 @@
 
     --red: #E83F5B;
     --red-light: #e66f82;
-
-    $mediaMaxWidth: 1260px;
-    $mediaBp1Width: 960px;
-    $mediaMinWidth: 480px;
 }
 
 @media (max-width: 1080px) {
