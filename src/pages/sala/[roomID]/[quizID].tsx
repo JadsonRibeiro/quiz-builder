@@ -595,10 +595,11 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                                         )}
                                         <div className={styles.submitButton}>
                                             {(currentTeam === myTeam) && !waitingNextQuestion && (
-                                                <Button
+                                                <button
+                                                    className={styles.answerButton}
                                                     onClick={handleClickAnswerQuestionButton}
                                                 > Responder
-                                                </Button>
+                                                </button>
                                             )}
                                             {waitingNextQuestion && (
                                                 <Button
