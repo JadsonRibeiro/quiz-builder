@@ -487,31 +487,18 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                         {room && room.users && room.users.map((user: User) => (
                             <li key={user.username}>
                                 <span>{user.username}</span>
-                                <div>
-                                    <label htmlFor={`team-1-${user.username}`}>
-                                        Time 01
-                                        <input
-                                            type="radio" 
-                                            name={`team-${user.username}`}
-                                            id={`team-1-${user.username}`}
-                                            value={1} 
-                                            disabled={!isOwner}
-                                            onChange={(event) => handleTeamOptionChanged(Number(event.target.value), user)}
-                                            checked={choicedTeams[user.username]?.teamID === 1}
-                                        />
-                                    </label>
-                                    <label htmlFor={`team-2-${user.username}`}>
-                                        Time 02
-                                        <input 
-                                            type="radio" 
-                                            name={`team-${user.username}`}
-                                            id={`team-2-${user.username}`}
-                                            value={2}
-                                            disabled={!isOwner}
-                                            onChange={(event) => handleTeamOptionChanged(Number(event.target.value), user)}
-                                            checked={choicedTeams[user.username]?.teamID === 2}
-                                        />
-                                    </label>
+                                <div className={styles.teamsButton}>
+                                    <button
+                                        disabled={!isOwner}
+                                        onClick={() => handleTeamOptionChanged(1, user)}
+                                        className={choicedTeams[user.username]?.teamID === 1 ? styles.choiced : ''}
+                                    >Time 01</button>
+                                    
+                                    <button
+                                        disabled={!isOwner}
+                                        onClick={() => handleTeamOptionChanged(2, user)}
+                                        className={choicedTeams[user.username]?.teamID === 2 ? styles.choiced : ''}
+                                    >Time 02</button>
                                 </div>
                             </li>
                         ))}
@@ -523,7 +510,7 @@ export default function RoomPage({ timeToAnswer }: RoomPageProps) {
                                 <Button onClick={handleClickStartGameButton}>Iniciar jogo</Button>
                             </div>
                             <div className={styles.submitButton}>
-                                <Button onClick={shareRoomLink}><FiShare2 />Compartilhar link da sala</Button>
+                                <Button onClick={shareRoomLink}><FiShare2 />Compartilhar link</Button>
                             </div>
                         </>
                     )}
